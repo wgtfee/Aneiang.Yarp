@@ -23,6 +23,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aneiang.Yarp.Storage.Abstra
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Aneiang.Yarp.Storage.Sqlite", "src\Aneiang.Yarp.Storage.Sqlite\Aneiang.Yarp.Storage.Sqlite.csproj", "{6E88F783-CC7F-47C5-AFAB-FD29DA8F9127}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Industrial.Gateway.Host", "src\Industrial.Gateway.Host\Industrial.Gateway.Host.csproj", "{404BA77B-CEA6-4E87-9D97-1D4CDADECE8F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -129,6 +131,18 @@ Global
 		{6E88F783-CC7F-47C5-AFAB-FD29DA8F9127}.Release|x64.Build.0 = Release|Any CPU
 		{6E88F783-CC7F-47C5-AFAB-FD29DA8F9127}.Release|x86.ActiveCfg = Release|Any CPU
 		{6E88F783-CC7F-47C5-AFAB-FD29DA8F9127}.Release|x86.Build.0 = Release|Any CPU
+		{404BA77B-CEA6-4E87-9D97-1D4CDADECE8F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{404BA77B-CEA6-4E87-9D97-1D4CDADECE8F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{404BA77B-CEA6-4E87-9D97-1D4CDADECE8F}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{404BA77B-CEA6-4E87-9D97-1D4CDADECE8F}.Debug|x64.Build.0 = Debug|Any CPU
+		{404BA77B-CEA6-4E87-9D97-1D4CDADECE8F}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{404BA77B-CEA6-4E87-9D97-1D4CDADECE8F}.Debug|x86.Build.0 = Debug|Any CPU
+		{404BA77B-CEA6-4E87-9D97-1D4CDADECE8F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{404BA77B-CEA6-4E87-9D97-1D4CDADECE8F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{404BA77B-CEA6-4E87-9D97-1D4CDADECE8F}.Release|x64.ActiveCfg = Release|Any CPU
+		{404BA77B-CEA6-4E87-9D97-1D4CDADECE8F}.Release|x64.Build.0 = Release|Any CPU
+		{404BA77B-CEA6-4E87-9D97-1D4CDADECE8F}.Release|x86.ActiveCfg = Release|Any CPU
+		{404BA77B-CEA6-4E87-9D97-1D4CDADECE8F}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -142,6 +156,7 @@ Global
 		{F1E2D3C4-5678-9012-3456-7890ABCDEF12} = {9B6CB266-A584-4BF6-A116-ECC6DACC8228}
 		{5A6A639A-5988-4DF5-B05B-873E6FC4F7B1} = {9B6CB266-A584-4BF6-A116-ECC6DACC8228}
 		{6E88F783-CC7F-47C5-AFAB-FD29DA8F9127} = {9B6CB266-A584-4BF6-A116-ECC6DACC8228}
+		{404BA77B-CEA6-4E87-9D97-1D4CDADECE8F} = {9B6CB266-A584-4BF6-A116-ECC6DACC8228}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {2298A573-1066-4805-A90A-F81617EB2FFA}

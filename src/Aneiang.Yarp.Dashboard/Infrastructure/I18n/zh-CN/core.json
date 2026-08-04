@@ -97,7 +97,7 @@
   "index.time.secondsAgo": " 秒前",
   "index.title": "总览",
   "index.viewRawJson": "查看原始JSON",
-  "layout.brand": "网关维护仪表盘",
+  "layout.brand": "微服务平台控制台",
   "layout.lang.switch": "English",
   "layout.tab.security": "安全事件",
   "layout.user.loggedIn": "已登录",

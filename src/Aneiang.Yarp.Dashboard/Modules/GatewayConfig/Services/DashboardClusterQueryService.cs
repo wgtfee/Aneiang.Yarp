@@ -1,6 +1,8 @@
 using Aneiang.Yarp.Dashboard.Modules.Dashboard.Models;
 using Aneiang.Yarp.Services;
 using Microsoft.Extensions.Caching.Memory;
+using Yarp.ReverseProxy;
+using Yarp.ReverseProxy.Model;
 
 namespace Aneiang.Yarp.Dashboard.Modules.GatewayConfig.Services;
 
@@ -12,6 +14,7 @@ internal sealed class DashboardClusterQueryService : IDashboardClusterQueryServi
 {
     private readonly DynamicYarpConfigService _dynamicConfig;
     private readonly IMemoryCache _memoryCache;
+    private readonly IProxyStateLookup _proxyStateLookup;
     private static readonly TimeSpan CacheDuration = TimeSpan.FromSeconds(10);
 
     /// <summary>
@@ -21,10 +24,12 @@ internal sealed class DashboardClusterQueryService : IDashboardClusterQueryServi
     /// <param name="memoryCache">Unified memory cache for all query services.</param>
     public DashboardClusterQueryService(
         DynamicYarpConfigService dynamicConfig,
-        IMemoryCache memoryCache)
+        IMemoryCache memoryCache,
+        IProxyStateLookup proxyStateLookup)
     {
         _dynamicConfig = dynamicConfig;
         _memoryCache = memoryCache;
+        _proxyStateLookup = proxyStateLookup;
     }
 
     /// <inheritdoc />
@@ -40,7 +45,7 @@ internal sealed class DashboardClusterQueryService : IDashboardClusterQueryServi
         var clusters = _dynamicConfig.GetClusters();
 
         var responses = clusters?
-            .Select(cluster => DashboardClusterMapper.MapToResponse(cluster, _dynamicConfig))
+            .Select(cluster => DashboardClusterMapper.MapToResponse(cluster, _dynamicConfig, _proxyStateLookup))
             .ToList() ?? new List<DashboardClusterResponse>();
 
         _memoryCache.Set(cacheKey, responses, CacheDuration);

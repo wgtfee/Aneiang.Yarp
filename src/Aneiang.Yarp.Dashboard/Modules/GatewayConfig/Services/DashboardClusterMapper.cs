@@ -1,6 +1,8 @@
 using Aneiang.Yarp.Dashboard.Modules.Dashboard.Models;
 using Aneiang.Yarp.Services;
+using Yarp.ReverseProxy;
 using Yarp.ReverseProxy.Configuration;
+using Yarp.ReverseProxy.Model;
 
 namespace Aneiang.Yarp.Dashboard.Modules.GatewayConfig.Services;
 
@@ -14,22 +16,40 @@ internal static class DashboardClusterMapper
     /// </summary>
     public static DashboardClusterResponse MapToResponse(
         ClusterConfig cluster,
-        DynamicYarpConfigService dynamicConfig)
+        DynamicYarpConfigService dynamicConfig,
+        IProxyStateLookup proxyStateLookup)
     {
         var activeHealthConfigured = cluster.HealthCheck?.Active?.Enabled == true;
         var passiveHealthConfigured = cluster.HealthCheck?.Passive?.Enabled == true;
 
-        var destinations = cluster.Destinations?.Select(d => new DashboardDestinationResponse
+        // DestinationConfig.Health is the configured value. Active/passive probes update
+        // YARP's runtime DestinationState instead, so read that state for the dashboard.
+        proxyStateLookup.TryGetCluster(cluster.ClusterId ?? string.Empty, out var runtimeCluster);
+        var runtimeDestinations = runtimeCluster?.DestinationsState.AllDestinations;
+
+        var destinations = cluster.Destinations?.Select(d =>
         {
-            Name = d.Key,
-            Address = d.Value.Address,
-            Health = d.Value.Health,
-            Host = d.Value.Host,
-            Metadata = d.Value.Metadata?.Count > 0
+            var runtimeDestination = FindRuntimeDestination(runtimeDestinations, d.Key);
+            return new DashboardDestinationResponse
+            {
+                Name = d.Key,
+                Address = d.Value.Address,
+                Health = ResolveOverallHealth(
+                d.Value.Health,
+                runtimeDestination,
+                activeHealthConfigured,
+                passiveHealthConfigured),
+                Host = d.Value.Host,
+                Metadata = d.Value.Metadata?.Count > 0
                 ? d.Value.Metadata.ToDictionary(kv => kv.Key, kv => kv.Value)
                 : null,
-            ActiveHealth = ResolveHealthStatus(d.Value.Health, activeHealthConfigured),
-            PassiveHealth = ResolveHealthStatus(d.Value.Health, passiveHealthConfigured)
+                ActiveHealth = ResolveActiveHealth(
+                runtimeDestination,
+                activeHealthConfigured),
+                PassiveHealth = ResolvePassiveHealth(
+                runtimeDestination,
+                passiveHealthConfigured)
+            };
         }).ToList() ?? new List<DashboardDestinationResponse>();
 
         var healthyCount = destinations.Count(d => string.Equals(d.Health, "Healthy", StringComparison.OrdinalIgnoreCase));
@@ -205,16 +225,37 @@ internal static class DashboardClusterMapper
         };
     }
 
-    /// <summary>
-    /// Resolves health status string based on YARP runtime health data.
-    /// If the health check type is not configured, returns "Unknown" (not monitored).
-    /// Otherwise returns the actual health status ("Healthy"/"Unhealthy") or "Unknown" if no data yet.
-    /// </summary>
-    private static string ResolveHealthStatus(string? yarpHealth, bool healthCheckConfigured)
+    private static string ResolveOverallHealth(
+        string? configuredHealth,
+        DestinationState? runtimeDestination,
+        bool activeConfigured,
+        bool passiveConfigured)
     {
-        if (!healthCheckConfigured)
-            return "Unknown";
-
-        return !string.IsNullOrWhiteSpace(yarpHealth) ? yarpHealth : "Unknown";
+        if (activeConfigured)
+            return runtimeDestination?.Health.Active.ToString() ?? "Unknown";
+        if (passiveConfigured)
+            return runtimeDestination?.Health.Passive.ToString() ?? "Unknown";
+        return string.IsNullOrWhiteSpace(configuredHealth) ? "Unknown" : configuredHealth;
     }
+
+    private static string ResolveActiveHealth(
+        DestinationState? runtimeDestination,
+        bool healthCheckConfigured)
+        => healthCheckConfigured
+            ? runtimeDestination?.Health.Active.ToString() ?? "Unknown"
+            : "Unknown";
+
+    private static string ResolvePassiveHealth(
+        DestinationState? runtimeDestination,
+        bool healthCheckConfigured)
+        => healthCheckConfigured
+            ? runtimeDestination?.Health.Passive.ToString() ?? "Unknown"
+            : "Unknown";
+
+    private static DestinationState? FindRuntimeDestination(
+        IReadOnlyList<DestinationState>? destinations,
+        string destinationId)
+        => destinations?.FirstOrDefault(x =>
+            string.Equals(x.DestinationId, destinationId, StringComparison.OrdinalIgnoreCase));
+
 }

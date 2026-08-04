@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - @((ViewBag.Locale as string) == "en-US" ? "Gateway Dashboard" : "网关维护仪表盘")</title>
+    <title>@ViewData["Title"] - @((ViewBag.Locale as string) == "en-US" ? "Industrial Platform Console" : "微服务控制台")</title>
     <script>
         // Prevent bfcache - critical for single-page-like behavior
         window.addEventListener('pageshow', function(event) {
@@ -2914,7 +2914,7 @@
     <div class="mobile-topbar" id="mobile-topbar">
         <div class="mobile-topbar-brand">
             <i class="bi bi-hdd-rack"></i>
-            <span data-i18n="layout.brand">@((ViewBag.Locale as string) == "en-US" ? "Gateway Dashboard" : "网关维护仪表盘")</span>
+            <span data-i18n="layout.brand">@((ViewBag.Locale as string) == "en-US" ? "Industrial Platform Console" : "微服务平台控制台")</span>
         </div>
         <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileSidebar()">
             <span></span><span></span><span></span>
@@ -2932,8 +2932,8 @@
                     <i class="bi bi-hdd-rack-fill"></i>
                 </div>
                 <div class="brand-text">
-                    <div class="brand-title" data-i18n="layout.brand">网关维护仪表盘</div>
-                    <div class="brand-subtitle">Gateway Console</div>
+                    <div class="brand-title" data-i18n="layout.brand">微服务平台控制台</div>
+                    <div class="brand-subtitle">Platform Console</div>
                 </div>
             </div>
             <div class="brand-divider"></div>
@@ -2973,6 +2973,7 @@
                 new {
                     Title = isEn ? "Security" : "安全策略",
                     Items = new[] {
+                        new { Key = "security-center", Title = isEn ? "Security Center" : "安全中心", Icon = "bi-person-lock", Path = $"/{prefix}/security", Badge = "NEW", Conditional = false },
                         new { Key = "waf", Title = isEn ? "WAF Firewall" : "WAF 防火墙", Icon = "bi-shield-lock", Path = $"/{prefix}/waf", Badge = "", Conditional = false },
                         new { Key = "policies", Title = isEn ? "Policies" : "策略管理", Icon = "bi-shield", Path = $"/{prefix}/policies", Badge = "", Conditional = false },
                         new { Key = "plugins", Title = isEn ? "Plugins" : "插件管理", Icon = "bi-puzzle", Path = $"/{prefix}/plugins", Badge = "", Conditional = false }
