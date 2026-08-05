@@ -2,11 +2,17 @@ using Aneiang.Yarp.Extensions;
 using Aneiang.Yarp.Dashboard.Extensions;
 using Aneiang.Yarp.Dashboard.Infrastructure.Deployment;
 using Aneiang.Yarp.Storage.Sqlite;
+using Industrial.Gateway.Host.Health;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
+// The dashboard serves Razor class-library assets under /_content/... .
+// Explicitly enable the generated static-web-assets manifest so the dashboard
+// endpoint can resolve those files in both Development and executable runs.
+builder.WebHost.UseStaticWebAssets();
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 if (builder.Environment.IsDevelopment())
@@ -47,13 +53,10 @@ app.UseAneiangYarpDashboard(new DashboardApplicationBuilderExtensions.DashboardU
     // The dashboard extension owns the proxy endpoint and authorization middleware.
     AutoUseAuthorization = true
 });
+app.MapIndustrialHealth("industrial-gateway");
 // Dashboard MVC pages and APIs are supplied by Aneiang.Yarp.Dashboard.
 // They are mounted under Gateway:Dashboard:RoutePrefix ("platform" for S08).
 app.MapControllers();
-app.MapHealthChecks("/health/live", new HealthCheckOptions
-{
-    Predicate = _ => false
-});
 app.MapHealthChecks("/health/ready");
 app.MapHealthChecks("/healthz");
 app.MapGet("/", () => Results.Ok(new { service = "Industrial.Gateway", status = "ready" }));

@@ -54,6 +54,17 @@ public class HealthCheckMiddleware
             return;
         }
 
+        // V0.7.1 owns the three-layer contract. Let endpoint routing handle
+        // these paths so the structured Application/Dependency/Traffic payloads
+        // are returned instead of the legacy binary dashboard response.
+        if (path.Equals("/health/live", StringComparison.OrdinalIgnoreCase)
+            || path.Equals("/health/dependencies", StringComparison.OrdinalIgnoreCase)
+            || path.Equals("/health/traffic", StringComparison.OrdinalIgnoreCase))
+        {
+            await _next(context);
+            return;
+        }
+
         // IP allow-list
         if (_options.HealthCheck.AllowedIps.Count > 0)
         {

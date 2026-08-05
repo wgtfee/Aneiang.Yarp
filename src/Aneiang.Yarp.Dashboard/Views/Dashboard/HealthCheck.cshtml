@@ -99,6 +99,19 @@
     <div id="health-content" class="card-body"></div>
 </div>
 
+<div id="health-layer-panel" class="card-panel mb-4">
+    <div class="card-header">
+        <span><i class="bi bi-diagram-3 me-2" style="color:#6366f1;"></i>V0.7.1 分层健康状态</span>
+        <span class="text-muted small">Application · Dependencies · Traffic</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead><tr><th>集群</th><th>节点</th><th>Application</th><th>Dependencies</th><th>Traffic</th><th>原因</th></tr></thead>
+            <tbody id="health-layer-tbody"><tr><td colspan="6" class="text-muted text-center">加载中...</td></tr></tbody>
+        </table>
+    </div>
+</div>
+
 @section Scripts {
 @{ var v = typeof(LogEntry).Assembly.GetName().Version?.ToString() ?? DateTime.Now.Ticks.ToString(); }
 <!-- Chart.js for health gauge -->
@@ -274,6 +287,41 @@
         // Extend existing HealthCheckModule (defined in dashboard-healthcheck.js)
         window.HealthCheckModule = window.HealthCheckModule || {};
         window.HealthCheckModule.loadHealthSummary = loadHealthSummary;
+
+        async function loadHealthDetails() {
+            var tbody = document.getElementById('health-layer-tbody');
+            if (!tbody || !window.DashboardApi?.endpoints?.getHealthDetails) return;
+            try {
+                var result = await DashboardApi.endpoints.getHealthDetails();
+                var rows = result?.data || result || [];
+                if (!rows.length) { tbody.innerHTML = '<tr><td colspan="6" class="text-muted text-center">暂无业务节点</td></tr>'; return; }
+                tbody.innerHTML = rows.map(function (item) {
+                    var deps = Array.isArray(item.dependencies) ? item.dependencies : [];
+                    var failed = deps.filter(function (d) { return String(d.status || '').toLowerCase() !== 'healthy'; });
+                    var traffic = String(item.trafficStatus || 'Unknown');
+                    // Application is the process/liveness state. The top-level
+                    // serviceStatus also includes dependency degradation, so it
+                    // must not make a live application appear unhealthy here.
+                    var application = String(item.application?.status || item.serviceStatus || 'Unknown');
+                    var applicationState = application.toLowerCase();
+                    var statusClass = traffic === 'Allowed' ? 'bg-success' : 'bg-danger';
+                    var reason = Array.isArray(item.reasons) ? item.reasons.map(function (r) {
+                        if (r && typeof r === 'object') return r.message || r.reasonCode || JSON.stringify(r);
+                        return r;
+                    }).join(', ') : (item.reasons || '-');
+                    return '<tr><td><code>' + escapeHtml(item.clusterId || '-') + '</code></td>' +
+                        '<td>' + escapeHtml(item.destinationId || '-') + '</td>' +
+                        '<td><span class="badge ' + (applicationState === 'healthy' ? 'bg-success' : applicationState === 'degraded' ? 'bg-warning text-dark' : 'bg-danger') + '">' + escapeHtml(application) + '</span></td>' +
+                        '<td>' + (failed.length ? '<span class="text-danger">' + failed.length + ' 项异常</span>' : '<span class="text-success">全部正常</span>') + '</td>' +
+                        '<td><span class="badge ' + statusClass + '">' + escapeHtml(traffic) + '</span></td>' +
+                        '<td><small>' + escapeHtml(reason) + '</small></td></tr>';
+                }).join('');
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-danger text-center">分层健康数据加载失败</td></tr>';
+                console.error('[HealthCheck] Failed to load V0.7.1 details:', e);
+            }
+        }
+        window.HealthCheckModule.loadHealthDetails = loadHealthDetails;
     })();
 
     // Initialize
@@ -291,6 +339,7 @@
 
         // Load health summary (enhanced data)
         if (window.HealthCheckModule?.loadHealthSummary) HealthCheckModule.loadHealthSummary();
+        if (window.HealthCheckModule?.loadHealthDetails) HealthCheckModule.loadHealthDetails();
 
         document.dispatchEvent(new CustomEvent('dashboard:ready'));
     })();

@@ -8,6 +8,7 @@
     <ProjectReference Include="../Aneiang.Yarp/Aneiang.Yarp.csproj" />
     <ProjectReference Include="../Aneiang.Yarp.Dashboard/Aneiang.Yarp.Dashboard.csproj" />
     <ProjectReference Include="../Aneiang.Yarp.Storage.Sqlite/Aneiang.Yarp.Storage.Sqlite.csproj" />
+    <ProjectReference Include="../../../../Industrial.Health/src/Industrial.Health.Abstractions/Industrial.Health.Abstractions.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.16" />
     <!-- Dashboard uses recyclable buffers at runtime; keep the transitive package in the host output. -->
     <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" Version="3.0.1" />

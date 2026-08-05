@@ -293,6 +293,7 @@
 
         // Health Check
         getHealthCheckStatus: () => DashboardApi.get('/api/health-check/status'),
+        getHealthDetails: () => DashboardApi.get('/api/health-check/details'),
         getClusterHealthConfigs: () => DashboardApi.get('/api/health-check/clusters'),
         getHealthSummary: () => DashboardApi.get('/api/operations/health-summary'),
 
