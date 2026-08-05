@@ -27,6 +27,7 @@ public static class StorageServiceCollectionExtensions
         services.AddSingleton<IClusterRepository, SqliteClusterRepository>();
         services.AddSingleton<IPolicyRepository, SqlitePolicyRepository>();
         services.AddSingleton<IConfigHistoryRepository, SqliteConfigHistoryRepository>();
+        services.AddSingleton<IServiceHealthHistoryRepository, SqliteServiceHealthHistoryRepository>();
         services.AddSingleton<IAuditLogRepository, SqliteAuditLogRepository>();
         services.AddSingleton<IWafSettingsRepository, SqliteWafSettingsRepository>();
         services.AddSingleton<INotificationRepository, SqliteNotificationRepository>();

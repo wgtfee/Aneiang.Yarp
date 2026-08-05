@@ -174,11 +174,14 @@ public class DashboardOptions
     /// <summary>Enable passive health checking. Default: false.</summary>
     public bool EnablePassiveHealthCheck { get; set; }
 
-    /// <summary>Health check policy. Default: "ConsecutiveFailures".</summary>
-    public string PassiveHealthCheckPolicy { get; set; } = "ConsecutiveFailures";
+    /// <summary>Passive health check policy. YARP's built-in policy is "TransportFailureRate".</summary>
+    public string PassiveHealthCheckPolicy { get; set; } = "TransportFailureRate";
 
     /// <summary>Reactivation period. Default: "00:00:30".</summary>
     public string PassiveHealthCheckReactivationPeriod { get; set; } = "00:00:30";
+
+    /// <summary>Number of days to retain service health transition history.</summary>
+    public int HealthHistoryRetentionDays { get; set; } = 30;
 
     // ──────────────── Sub-option objects (feature settings) ────────────────
 

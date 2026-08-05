@@ -173,6 +173,7 @@ public static class DashboardApplicationBuilderExtensions
 
                 endpoints.MapHub<TrafficHub>($"/{routePrefix}/hubs/traffic");
                 endpoints.MapHub<OverviewHub>($"/{routePrefix}/hubs/overview");
+                endpoints.MapHub<HealthHub>($"/{routePrefix}/hubs/health");
             }
 
             if (proxyActive)

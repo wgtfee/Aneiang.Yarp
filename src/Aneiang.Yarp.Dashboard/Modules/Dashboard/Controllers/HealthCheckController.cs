@@ -1,12 +1,13 @@
 using Aneiang.Yarp.Services;
 using Microsoft.AspNetCore.Mvc;
+using Yarp.ReverseProxy;
 
 namespace Aneiang.Yarp.Dashboard.Modules.Dashboard.Controllers;
 
 /// <summary>Health check status and management API.</summary>
 [Route("api/health-check")]
 [ApiController]
-public class HealthCheckController(DynamicYarpConfigService dynamicConfig) : ControllerBase
+public class HealthCheckController(DynamicYarpConfigService dynamicConfig, IProxyStateLookup proxyStateLookup) : ControllerBase
 {
     /// <summary>Get health check configuration for all clusters.</summary>
     [HttpGet("clusters")]
@@ -53,6 +54,18 @@ public class HealthCheckController(DynamicYarpConfigService dynamicConfig) : Con
                 availableDestinationsPolicy = c.HealthCheck.AvailableDestinationsPolicy
             } : null,
             destinationCount = c.Destinations?.Count ?? 0
+            , runtime = c.Destinations?.Select(d =>
+            {
+                proxyStateLookup.TryGetCluster(c.ClusterId ?? string.Empty, out var runtimeCluster);
+                var runtimeDestination = runtimeCluster?.DestinationsState.AllDestinations.FirstOrDefault(x =>
+                    string.Equals(x.DestinationId, d.Key, StringComparison.OrdinalIgnoreCase));
+                return new
+                {
+                    destinationId = d.Key,
+                    active = runtimeDestination?.Health.Active.ToString(),
+                    passive = runtimeDestination?.Health.Passive.ToString()
+                };
+            })
         }).ToList();
 
         return Ok(new { code = 200, data = status });

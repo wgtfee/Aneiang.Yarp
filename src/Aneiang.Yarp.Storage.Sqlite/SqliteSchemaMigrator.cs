@@ -30,6 +30,7 @@ public sealed class SqliteSchemaMigrator : IHostedService
         new Migration007_AITables(),
         new Migration008_ToolCallId(),
         new Migration009_AISettingsTable(),
+        new Migration010_ServiceHealthHistory(),
     ];
 
     /// <summary>

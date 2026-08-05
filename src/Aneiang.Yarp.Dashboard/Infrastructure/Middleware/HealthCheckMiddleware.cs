@@ -2,9 +2,11 @@ using System.Diagnostics;
 using System.Reflection;
 using Aneiang.Yarp.Dashboard.Infrastructure.Deployment;
 using Aneiang.Yarp.Services;
+using Aneiang.Yarp.Storage;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Aneiang.Yarp.Dashboard.Infrastructure.Middleware;
 
@@ -18,6 +20,7 @@ public class HealthCheckMiddleware
     private readonly RequestDelegate _next;
     private readonly DeploymentOptions _options;
     private readonly IDynamicYarpConfigService _configService;
+    private readonly IDbConnectionFactory? _dbConnections;
     private readonly ILogger<HealthCheckMiddleware> _logger;
     private readonly DateTime _processStart = Process.GetCurrentProcess().StartTime.ToUniversalTime();
     private readonly string _version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0";
@@ -26,11 +29,13 @@ public class HealthCheckMiddleware
         RequestDelegate next,
         IOptions<DeploymentOptions> options,
         IDynamicYarpConfigService configService,
+        IServiceProvider services,
         ILogger<HealthCheckMiddleware> logger)
     {
         _next = next;
         _options = options.Value;
         _configService = configService;
+        _dbConnections = services.GetService<IDbConnectionFactory>();
         _logger = logger;
     }
 
@@ -83,7 +88,7 @@ public class HealthCheckMiddleware
             return;
         }
 
-        var (isReady, checks) = PerformReadinessCheck();
+        var (isReady, checks) = await PerformReadinessCheckAsync();
 
         if (path.Equals(_options.HealthCheck.ReadyPath, StringComparison.OrdinalIgnoreCase))
         {
@@ -115,7 +120,7 @@ public class HealthCheckMiddleware
         }
     }
 
-    private (bool IsReady, Dictionary<string, object> Checks) PerformReadinessCheck()
+    private async Task<(bool IsReady, Dictionary<string, object> Checks)> PerformReadinessCheckAsync()
     {
         var checks = new Dictionary<string, object>();
         var isReady = true;
@@ -136,7 +141,32 @@ public class HealthCheckMiddleware
             }
         }
 
+        if (_options.HealthCheck.CheckDatabase)
+        {
+            try
+            {
+                if (_dbConnections == null)
+                    throw new InvalidOperationException("Database connection factory is not registered");
+                await CheckDatabaseAsync(checks);
+            }
+            catch (Exception ex)
+            {
+                checks["database"] = new { status = "fail", error = ex.Message };
+                isReady = false;
+            }
+        }
+
         return (isReady, checks);
+    }
+
+    private async Task CheckDatabaseAsync(Dictionary<string, object> checks)
+    {
+        await using var connection = _dbConnections!.CreateConnection();
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT 1";
+        await command.ExecuteScalarAsync();
+        checks["database"] = new { status = "ok" };
     }
 
     private bool IsHealthPath(string path) =>

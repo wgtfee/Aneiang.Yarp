@@ -341,6 +341,8 @@ public static class DashboardServiceCollectionExtensions
 
         services.AddSingleton<OverviewBroadcastService>();
         services.AddHostedService<OverviewBroadcastService>();
+        services.AddSingleton<HealthStatusBroadcastService>();
+        services.AddHostedService<HealthStatusBroadcastService>();
 
         services.AddSingleton<RecyclableMemoryStreamManager>();
         services.AddSingleton<LockFreeStatistics>();

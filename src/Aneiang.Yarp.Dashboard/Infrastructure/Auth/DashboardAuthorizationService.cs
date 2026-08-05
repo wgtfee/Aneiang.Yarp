@@ -40,6 +40,14 @@ public sealed class DashboardAuthorizationService : IDashboardAuthorizationServi
         // Priority 3: JWT (DefaultJwt / CustomJwt)
         if (_options.AuthMode is DashboardAuthMode.CustomJwt or DashboardAuthMode.DefaultJwt)
         {
+            // When the host's JwtBearer/OpenIddict authentication has already
+            // validated the request (including IAM access tokens), honour that
+            // principal instead of requiring a second dashboard-specific secret.
+            if (context.User?.Identity?.IsAuthenticated == true)
+            {
+                return true;
+            }
+
             return CheckJwt(context);
         }
 
@@ -127,6 +135,14 @@ public sealed class DashboardAuthorizationService : IDashboardAuthorizationServi
         if (!string.IsNullOrEmpty(queryToken))
         {
             return queryToken;
+        }
+
+        // ASP.NET Core SignalR's accessTokenFactory uses the conventional
+        // access_token query parameter for WebSocket/SSE transports.
+        var signalRToken = context.Request.Query["access_token"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(signalRToken))
+        {
+            return signalRToken;
         }
 
         // dashboard_token cookie (for browser page loads)
