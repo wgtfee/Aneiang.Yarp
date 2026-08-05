@@ -9,6 +9,9 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
+// MES 业务 API 的最终授权由 MOL 自己负责。额外配置仅覆盖 MES Route 的
+// Gateway AuthorizationPolicy，避免 Local JWT 在 Gateway 处被 IAM JwtBearer 提前拒绝。
+builder.Configuration.AddJsonFile("appsettings.MesPassThrough.json", optional: true, reloadOnChange: true);
 // The dashboard serves Razor class-library assets under /_content/... .
 // Explicitly enable the generated static-web-assets manifest so the dashboard
 // endpoint can resolve those files in both Development and executable runs.
