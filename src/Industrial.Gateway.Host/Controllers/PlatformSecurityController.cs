@@ -7,8 +7,8 @@ namespace Industrial.Gateway.Host.Controllers;
 
 /// <summary>
 /// Security-center shell hosted by Gateway. IAM remains the credential authority;
-/// successful IAM login also establishes a short-lived Gateway dashboard session so
-/// /platform is no longer anonymous.
+/// successful IAM login can also establish a short-lived Gateway dashboard session.
+/// Dashboard access is separately restricted by Gateway:Dashboard:AllowedUsers.
 /// </summary>
 [ApiExplorerSettings(IgnoreApi = true)]
 [Route("platform/security")]
@@ -42,7 +42,7 @@ public sealed class PlatformSecurityController : Controller
             foreach (var cookie in cookies) Response.Headers.Append("Set-Cookie", cookie);
 
         var content = await upstream.Content.ReadAsStringAsync(cancellationToken);
-        if (upstream.IsSuccessStatusCode)
+        if (upstream.IsSuccessStatusCode && IsDashboardOperator(request.UserName))
         {
             var identity = new ClaimsIdentity(DashboardCookieScheme, ClaimTypes.Name, ClaimTypes.Role);
             identity.AddClaim(new Claim(ClaimTypes.Name, request.UserName));
@@ -72,6 +72,13 @@ public sealed class PlatformSecurityController : Controller
     {
         await HttpContext.SignOutAsync(DashboardCookieScheme);
         return NoContent();
+    }
+
+    private bool IsDashboardOperator(string userName)
+    {
+        var allowedUsers = _configuration.GetSection("Gateway:Dashboard:AllowedUsers").Get<string[]>()
+            ?? ["admin"];
+        return allowedUsers.Any(x => string.Equals(x?.Trim(), userName?.Trim(), StringComparison.OrdinalIgnoreCase));
     }
 }
 
