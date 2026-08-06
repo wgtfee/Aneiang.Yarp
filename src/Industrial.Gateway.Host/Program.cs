@@ -2,8 +2,10 @@ using Aneiang.Yarp.Extensions;
 using Aneiang.Yarp.Dashboard.Extensions;
 using Aneiang.Yarp.Dashboard.Infrastructure.Deployment;
 using Aneiang.Yarp.Storage.Sqlite;
+using Industrial.Gateway.Host.Controllers;
 using Industrial.Gateway.Host.Health;
 using Industrial.Gateway.Host.Infrastructure;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -23,7 +25,6 @@ if (!centralizedCutover)
     builder.Configuration.AddJsonFile("appsettings.PlatformCompatibility.json", optional: true, reloadOnChange: true);
 }
 
-// The dashboard serves Razor class-library assets under /_content/... .
 builder.WebHost.UseStaticWebAssets();
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
@@ -44,7 +45,24 @@ if (!builder.Environment.IsDevelopment()
 
 builder.Services.AddAneiangYarp(enableRegistration: false);
 builder.Services.AddAneiangStorage();
-builder.Services.AddAneiangYarpDashboard();
+builder.Services.AddAneiangYarpDashboard(options =>
+{
+    // The security-center login is the bootstrap surface. Every other Dashboard
+    // request must carry a GatewayDashboard session that was established only after
+    // IAM accepted the user's credentials.
+    options.AuthorizeRequest = async context =>
+    {
+        if (context.Request.Path.StartsWithSegments("/platform/security"))
+            return true;
+
+        var session = await context.AuthenticateAsync(PlatformSecurityController.DashboardCookieScheme);
+        if (!session.Succeeded || session.Principal is null)
+            return false;
+
+        context.User = session.Principal;
+        return true;
+    };
+});
 builder.Services.AddAneiangYarpDeployment();
 builder.Services.AddControllersWithViews();
 builder.Services.AddHttpClient();
@@ -58,12 +76,26 @@ var frontendOrigins = builder.Configuration.GetSection("Gateway:Cors:AllowedOrig
     };
 builder.Services.AddCors(options => options.AddPolicy("GatewayFrontend", policy =>
     policy.WithOrigins(frontendOrigins).AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.Authority = authority;
         options.Audience = iam["Audience"] ?? "industrial-platform";
         options.RequireHttpsMetadata = authority.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+    })
+    .AddCookie(PlatformSecurityController.DashboardCookieScheme, options =>
+    {
+        options.Cookie.Name = "industrial_gateway_dashboard";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+            ? CookieSecurePolicy.SameAsRequest
+            : CookieSecurePolicy.Always;
+        options.ExpireTimeSpan = TimeSpan.FromHours(1);
+        options.SlidingExpiration = false;
+        options.LoginPath = "/platform/security";
+        options.AccessDeniedPath = "/platform/security";
     });
 builder.Services.AddAuthorization(options =>
     options.AddPolicy("gateway", policy => policy.RequireAuthenticatedUser()));
@@ -72,8 +104,6 @@ builder.Services.AddHealthChecks();
 var app = builder.Build();
 app.Logger.LogInformation("Gateway security cutover mode: {CutoverMode}", centralizedCutover ? "Centralized" : "Migration");
 
-// Establish X-Trace-Id before routing/proxy execution so YARP forwards the same
-// identifier to every downstream service and returns it to the caller.
 app.UseMiddleware<TraceContextMiddleware>();
 app.UseRouting();
 app.UseCors("GatewayFrontend");
