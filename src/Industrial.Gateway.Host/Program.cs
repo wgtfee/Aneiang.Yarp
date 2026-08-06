@@ -3,6 +3,7 @@ using Aneiang.Yarp.Dashboard.Extensions;
 using Aneiang.Yarp.Dashboard.Infrastructure.Deployment;
 using Aneiang.Yarp.Storage.Sqlite;
 using Industrial.Gateway.Host.Health;
+using Industrial.Gateway.Host.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -33,7 +34,13 @@ builder.Services.AddAneiangYarpDeployment();
 builder.Services.AddControllersWithViews();
 builder.Services.AddHttpClient();
 var frontendOrigins = builder.Configuration.GetSection("Gateway:Cors:AllowedOrigins").Get<string[]>()
-    ?? new[] { "http://localhost:5173", "http://localhost:8080", "http://localhost:9991" };
+    ?? new[]
+    {
+        "http://localhost:5173",
+        "http://localhost:8080",
+        "http://localhost:9990",
+        "http://localhost:27915"
+    };
 builder.Services.AddCors(options => options.AddPolicy("GatewayFrontend", policy =>
     policy.WithOrigins(frontendOrigins).AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -48,6 +55,9 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddHealthChecks();
 
 var app = builder.Build();
+// Establish X-Trace-Id before routing/proxy execution so YARP forwards the same
+// identifier to every downstream service and returns it to the caller.
+app.UseMiddleware<TraceContextMiddleware>();
 app.UseRouting();
 app.UseCors("GatewayFrontend");
 app.UseAuthentication();
