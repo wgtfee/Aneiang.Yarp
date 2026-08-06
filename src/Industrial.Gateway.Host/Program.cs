@@ -14,17 +14,21 @@ using Microsoft.AspNetCore.Hosting;
 var builder = WebApplication.CreateBuilder(args);
 
 // Platform-owned routes must exist in every cutover mode. Compatibility overlays below
-// are allowed to relax authorization during Migration, but they must never create a route
-// that disappears when the Gateway switches to Centralized.
+// may relax authorization during Migration, but must never create routes that disappear
+// when the Gateway switches to Centralized.
 builder.Configuration.AddJsonFile("appsettings.PlatformRoutes.json", optional: false, reloadOnChange: true);
 
 // Migration is the safe default. In Migration mode legacy business JWTs are allowed
 // to pass the Gateway and downstream services remain the final authorization point.
-// Centralized mode stops loading the compatibility overrides so every route that is
-// marked with AuthorizationPolicy=gateway in the base/platform config requires an IAM JWT.
+// Centralized mode stops loading those compatibility overrides and applies the small
+// cutover hardening overlay for legacy bootstrap endpoints.
 var cutoverMode = builder.Configuration["Gateway:Security:CutoverMode"] ?? "Migration";
 var centralizedCutover = cutoverMode.Equals("Centralized", StringComparison.OrdinalIgnoreCase);
-if (!centralizedCutover)
+if (centralizedCutover)
+{
+    builder.Configuration.AddJsonFile("appsettings.CentralizedRoutes.json", optional: false, reloadOnChange: true);
+}
+else
 {
     builder.Configuration.AddJsonFile("appsettings.MesPassThrough.json", optional: true, reloadOnChange: true);
     builder.Configuration.AddJsonFile("appsettings.PlatformCompatibility.json", optional: true, reloadOnChange: true);
