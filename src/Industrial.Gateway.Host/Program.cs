@@ -135,6 +135,29 @@ app.UseMiddleware<TraceContextMiddleware>();
 app.UseRouting();
 app.UseCors("GatewayFrontend");
 app.UseAuthentication();
+
+// After JwtBearer has validated a browser SignalR access_token query parameter,
+// promote that same token to the Authorization header before YARP forwards the request.
+// Downstream Industrial.Security components intentionally consume only validated bearer
+// headers for SystemAccess and shadow-user mapping. Never perform this promotion for an
+// unauthenticated principal or in Migration mode, where legacy tokens remain backend-owned.
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path;
+    var isMesRealtime = path.StartsWithSegments("/message") || path.StartsWithSegments("/plcHub");
+    if (centralizedCutover
+        && isMesRealtime
+        && context.User.Identity?.IsAuthenticated == true
+        && string.IsNullOrWhiteSpace(context.Request.Headers.Authorization))
+    {
+        var accessToken = context.Request.Query["access_token"];
+        if (!string.IsNullOrWhiteSpace(accessToken))
+            context.Request.Headers.Authorization = $"Bearer {accessToken}";
+    }
+
+    await next();
+});
+
 app.UseAneiangYarpDashboard(new DashboardApplicationBuilderExtensions.DashboardUseOptions
 {
     AutoUseAuthorization = true
