@@ -31,6 +31,7 @@ jobs:
           centralized = json.loads((root / 'appsettings.CentralizedRoutes.json').read_text(encoding='utf-8-sig'))
           program = (root / 'Program.cs').read_text(encoding='utf-8-sig')
           pda = (root / 'Controllers/PdaSecurityController.cs').read_text(encoding='utf-8-sig')
+          gateway_permissions = (root / 'Infrastructure/GatewayIamPermissionAuthorizer.cs').read_text(encoding='utf-8-sig')
 
           routes = platform['ReverseProxy']['Routes']
 
@@ -89,10 +90,21 @@ jobs:
           assert 'path.StartsWithSegments("/message")' in program
           assert 'path.StartsWithSegments("/plcHub")' in program
           assert 'path.StartsWithSegments("/platform/hubs/health")' in program
-          assert 'if (context.User.Identity?.IsAuthenticated == true)' in program
+          assert 'GatewayIamPermissionAuthorizer.AuthorizeAsync' in program
           assert 'context.Request.Headers.Authorization = $"Bearer {accessToken}"' in program
-          assert 'GatewayDashboard cookie or by the already validated' in program
-          print('Gateway centralized bootstrap, PDA, dashboard SSO and SignalR route contract OK')
+
+          # An authenticated platform token is not sufficient for gateway administration.
+          # Read-only dashboard/health requests require View; mutations require Edit;
+          # IAM lookup failure is fail-closed. The legacy dashboard cookie remains an
+          # explicit allow-list fallback for the standalone gateway console.
+          assert 'Platform.Gateway.Route.View' in gateway_permissions
+          assert 'Platform.Gateway.Route.Edit' in gateway_permissions
+          assert '/api/iam/users/me/permissions' in gateway_permissions
+          assert 'return false;' in gateway_permissions
+          assert 'HttpMethods.IsGet' in gateway_permissions
+          assert 'StartsWithSegments("/platform/hubs/health"' in gateway_permissions
+          assert 'GatewayDashboard cookie' in program
+          print('Gateway centralized bootstrap, PDA, permissioned dashboard SSO and SignalR route contract OK')
 
       - name: Validate live acceptance harness syntax
         shell: pwsh
