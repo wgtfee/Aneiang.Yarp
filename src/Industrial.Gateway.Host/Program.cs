@@ -92,6 +92,24 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         options.Authority = authority;
         options.Audience = iam["Audience"] ?? "industrial-platform";
         options.RequireHttpsMetadata = authority.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+        options.Events = new JwtBearerEvents
+        {
+            // Browser WebSocket APIs cannot attach an Authorization header. SignalR
+            // therefore places the bearer token in the access_token query parameter
+            // for the actual websocket upgrade. Validate it at the Gateway in
+            // Centralized mode before proxying the request to the protected MES hubs.
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrWhiteSpace(accessToken)
+                    && (path.StartsWithSegments("/message") || path.StartsWithSegments("/plcHub")))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
+        };
     })
     .AddCookie(PlatformSecurityController.DashboardCookieScheme, options =>
     {
