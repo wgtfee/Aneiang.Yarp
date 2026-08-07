@@ -91,6 +91,21 @@ jobs:
           assert 'context.Request.Headers.Authorization = $"Bearer {accessToken}"' in program
           print('Gateway centralized bootstrap, PDA and SignalR route contract OK')
 
+      - name: Validate live acceptance harness syntax
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'scripts/validate-platform-e2e.ps1'),
+            [ref]$tokens,
+            [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+          Write-Host 'Platform E2E acceptance harness syntax OK'
+
       - name: Publish route-contract status
         if: always()
         uses: actions/github-script@v7
