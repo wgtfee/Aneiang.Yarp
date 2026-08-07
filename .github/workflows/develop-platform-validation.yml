@@ -54,6 +54,17 @@ jobs:
           assert {'PathRemovePrefix': '/api/iot'} in iot_emergency['Transforms']
           assert {'PathPrefix': '/api'} in iot_emergency['Transforms']
 
+          # MES SignalR routes exist in every cutover mode. Migration leaves the
+          # legacy JWT to the backend; Centralized additionally authenticates at YARP.
+          message_hub = routes['mes-signalr-message']
+          plc_hub = routes['mes-signalr-plc']
+          assert message_hub['ClusterId'] == 'mes'
+          assert message_hub['Match']['Path'] == '/message/{**catch-all}'
+          assert 'AuthorizationPolicy' not in message_hub
+          assert plc_hub['ClusterId'] == 'mes'
+          assert plc_hub['Match']['Path'] == '/plcHub/{**catch-all}'
+          assert 'AuthorizationPolicy' not in plc_hub
+
           assert '[Route("pda-auth")]' in pda
           assert '[HttpGet("signin")]' in pda
           assert 'industrial-pda' in pda
@@ -68,10 +79,15 @@ jobs:
           central_routes = centralized['ReverseProxy']['Routes']
           assert central_routes['mes-auth-login']['AuthorizationPolicy'] == 'gateway'
           assert central_routes['mes-auth-captcha']['AuthorizationPolicy'] == 'gateway'
+          assert central_routes['mes-signalr-message']['AuthorizationPolicy'] == 'gateway'
+          assert central_routes['mes-signalr-plc']['AuthorizationPolicy'] == 'gateway'
 
           assert 'appsettings.PlatformRoutes.json' in program
           assert 'appsettings.CentralizedRoutes.json' in program
-          print('Gateway centralized bootstrap route contract OK')
+          assert 'context.Request.Query["access_token"]' in program
+          assert 'path.StartsWithSegments("/message")' in program
+          assert 'path.StartsWithSegments("/plcHub")' in program
+          print('Gateway centralized bootstrap, PDA and SignalR route contract OK')
 
       - name: Publish route-contract status
         if: always()
