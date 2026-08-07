@@ -32,15 +32,30 @@ jobs:
           program = (root / 'Program.cs').read_text(encoding='utf-8-sig')
 
           routes = platform['ReverseProxy']['Routes']
-          mode = routes['mes-security-mode']
-          emergency = routes['mes-emergency-validate']
-          assert mode['Match']['Path'] == '/api/security/local-user-management'
-          assert 'AuthorizationPolicy' not in mode
-          assert emergency['Match']['Path'] == '/api/security/emergency/validate'
-          assert 'AuthorizationPolicy' not in emergency
+
+          mes_mode = routes['mes-security-mode']
+          mes_emergency = routes['mes-emergency-validate']
+          assert mes_mode['Match']['Path'] == '/api/security/local-user-management'
+          assert 'AuthorizationPolicy' not in mes_mode
+          assert mes_emergency['Match']['Path'] == '/api/security/emergency/validate'
+          assert 'AuthorizationPolicy' not in mes_emergency
+
+          iot_mode = routes['iot-security-mode']
+          iot_emergency = routes['iot-emergency-validate']
+          assert iot_mode['Match']['Path'] == '/api/iot/security/local-user-management'
+          assert iot_mode['ClusterId'] == 'iot'
+          assert 'AuthorizationPolicy' not in iot_mode
+          assert {'PathRemovePrefix': '/api/iot'} in iot_mode['Transforms']
+          assert {'PathPrefix': '/api'} in iot_mode['Transforms']
+          assert iot_emergency['Match']['Path'] == '/api/iot/security/emergency/validate'
+          assert iot_emergency['ClusterId'] == 'iot'
+          assert 'AuthorizationPolicy' not in iot_emergency
+          assert {'PathRemovePrefix': '/api/iot'} in iot_emergency['Transforms']
+          assert {'PathPrefix': '/api'} in iot_emergency['Transforms']
 
           base_routes = base['ReverseProxy']['Routes']
           assert base_routes['mes-api-default']['AuthorizationPolicy'] == 'gateway'
+          assert base_routes['iot-api']['AuthorizationPolicy'] == 'gateway'
           central_routes = centralized['ReverseProxy']['Routes']
           assert central_routes['mes-auth-login']['AuthorizationPolicy'] == 'gateway'
           assert central_routes['mes-auth-captcha']['AuthorizationPolicy'] == 'gateway'
