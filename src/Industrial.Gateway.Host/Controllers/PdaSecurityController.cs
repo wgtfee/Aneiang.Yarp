@@ -27,7 +27,10 @@ public sealed class PdaSecurityController : ControllerBase
             + "?client_id=" + Uri.EscapeDataString(ClientId)
             + "&response_type=code"
             + "&redirect_uri=" + Uri.EscapeDataString(RedirectUri)
-            + "&scope=" + Uri.EscapeDataString("openid profile industrial-platform")
+            // Native PDA sessions need offline_access so the app can renew its short-lived
+            // access token with the refresh-token flow instead of asking operators to sign
+            // in again every access-token lifetime. The PKCE verifier still remains local.
+            + "&scope=" + Uri.EscapeDataString("openid profile offline_access industrial-platform")
             + "&state=" + Uri.EscapeDataString(state!)
             + "&code_challenge=" + Uri.EscapeDataString(codeChallenge!)
             + "&code_challenge_method=S256";
