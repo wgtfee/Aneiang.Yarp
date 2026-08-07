@@ -57,16 +57,21 @@ builder.Services.AddAneiangStorage();
 builder.Services.AddAneiangYarpDashboard(options =>
 {
     // The security-center login is the bootstrap surface. Dashboard requests can be
-    // authorized either by the GatewayDashboard cookie or by the already validated
-    // platform bearer token used by first-party clients such as vol.web. This keeps
-    // one IAM session instead of forcing MES users to log in to the gateway again.
+    // authorized either by the explicitly allow-listed GatewayDashboard cookie or by
+    // the current platform bearer session after IAM confirms Gateway view/edit access.
     options.AuthorizeRequest = async context =>
     {
         if (context.Request.Path.StartsWithSegments("/platform/security"))
             return true;
 
-        if (context.User.Identity?.IsAuthenticated == true)
+        if (context.User.Identity?.IsAuthenticated == true
+            && await GatewayIamPermissionAuthorizer.AuthorizeAsync(
+                context,
+                authority,
+                context.RequestAborted))
+        {
             return true;
+        }
 
         var session = await context.AuthenticateAsync(PlatformSecurityController.DashboardCookieScheme);
         if (!session.Succeeded || session.Principal is null)
