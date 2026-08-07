@@ -87,6 +87,8 @@ jobs:
           assert 'context.Request.Query["access_token"]' in program
           assert 'path.StartsWithSegments("/message")' in program
           assert 'path.StartsWithSegments("/plcHub")' in program
+          assert 'context.User.Identity?.IsAuthenticated == true' in program
+          assert 'context.Request.Headers.Authorization = $"Bearer {accessToken}"' in program
           print('Gateway centralized bootstrap, PDA and SignalR route contract OK')
 
       - name: Publish route-contract status
