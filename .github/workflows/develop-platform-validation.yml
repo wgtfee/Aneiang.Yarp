@@ -30,6 +30,7 @@ jobs:
           platform = json.loads((root / 'appsettings.PlatformRoutes.json').read_text(encoding='utf-8-sig'))
           centralized = json.loads((root / 'appsettings.CentralizedRoutes.json').read_text(encoding='utf-8-sig'))
           program = (root / 'Program.cs').read_text(encoding='utf-8-sig')
+          pda = (root / 'Controllers/PdaSecurityController.cs').read_text(encoding='utf-8-sig')
 
           routes = platform['ReverseProxy']['Routes']
 
@@ -52,6 +53,14 @@ jobs:
           assert 'AuthorizationPolicy' not in iot_emergency
           assert {'PathRemovePrefix': '/api/iot'} in iot_emergency['Transforms']
           assert {'PathPrefix': '/api'} in iot_emergency['Transforms']
+
+          assert '[Route("pda-auth")]' in pda
+          assert '[HttpGet("signin")]' in pda
+          assert 'industrial-pda' in pda
+          assert 'industrial-platform://pda/callback' in pda
+          assert 'code_challenge_method=S256' in pda
+          assert "fetch('/account/login'" in pda
+          assert '/connect/authorize' in pda
 
           base_routes = base['ReverseProxy']['Routes']
           assert base_routes['mes-api-default']['AuthorizationPolicy'] == 'gateway'
