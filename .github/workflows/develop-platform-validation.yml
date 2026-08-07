@@ -69,6 +69,7 @@ jobs:
           assert '[HttpGet("signin")]' in pda
           assert 'industrial-pda' in pda
           assert 'industrial-platform://pda/callback' in pda
+          assert 'openid profile offline_access industrial-platform' in pda
           assert 'code_challenge_method=S256' in pda
           assert "fetch('/account/login'" in pda
           assert '/connect/authorize' in pda
