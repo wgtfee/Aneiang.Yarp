@@ -56,12 +56,16 @@ builder.Services.AddAneiangYarp(enableRegistration: false);
 builder.Services.AddAneiangStorage();
 builder.Services.AddAneiangYarpDashboard(options =>
 {
-    // The security-center login is the bootstrap surface. Every other Dashboard
-    // request must carry a GatewayDashboard session that was established only after
-    // IAM accepted the user's credentials.
+    // The security-center login is the bootstrap surface. Dashboard requests can be
+    // authorized either by the GatewayDashboard cookie or by the already validated
+    // platform bearer token used by first-party clients such as vol.web. This keeps
+    // one IAM session instead of forcing MES users to log in to the gateway again.
     options.AuthorizeRequest = async context =>
     {
         if (context.Request.Path.StartsWithSegments("/platform/security"))
+            return true;
+
+        if (context.User.Identity?.IsAuthenticated == true)
             return true;
 
         var session = await context.AuthenticateAsync(PlatformSecurityController.DashboardCookieScheme);
@@ -96,14 +100,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             // Browser WebSocket APIs cannot attach an Authorization header. SignalR
             // therefore places the bearer token in the access_token query parameter
-            // for the actual websocket upgrade. Validate it at the Gateway in
-            // Centralized mode before proxying the request to the protected MES hubs.
+            // for the actual websocket upgrade. Validate it at the Gateway for both
+            // MES proxied hubs and the Gateway's own platform health hub.
             OnMessageReceived = context =>
             {
                 var accessToken = context.Request.Query["access_token"];
                 var path = context.HttpContext.Request.Path;
                 if (!string.IsNullOrWhiteSpace(accessToken)
-                    && (path.StartsWithSegments("/message") || path.StartsWithSegments("/plcHub")))
+                    && (path.StartsWithSegments("/message")
+                        || path.StartsWithSegments("/plcHub")
+                        || path.StartsWithSegments("/platform/hubs/health")))
                 {
                     context.Token = accessToken;
                 }
