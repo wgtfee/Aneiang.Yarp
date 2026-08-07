@@ -88,9 +88,11 @@ jobs:
           assert 'context.Request.Query["access_token"]' in program
           assert 'path.StartsWithSegments("/message")' in program
           assert 'path.StartsWithSegments("/plcHub")' in program
-          assert 'context.User.Identity?.IsAuthenticated == true' in program
+          assert 'path.StartsWithSegments("/platform/hubs/health")' in program
+          assert 'if (context.User.Identity?.IsAuthenticated == true)' in program
           assert 'context.Request.Headers.Authorization = $"Bearer {accessToken}"' in program
-          print('Gateway centralized bootstrap, PDA and SignalR route contract OK')
+          assert 'GatewayDashboard cookie or by the already validated' in program
+          print('Gateway centralized bootstrap, PDA, dashboard SSO and SignalR route contract OK')
 
       - name: Validate live acceptance harness syntax
         shell: pwsh
