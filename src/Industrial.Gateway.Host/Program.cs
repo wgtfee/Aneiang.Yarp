@@ -106,7 +106,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             // Browser WebSocket APIs cannot attach an Authorization header. SignalR
             // therefore places the bearer token in the access_token query parameter
             // for the actual websocket upgrade. Validate it at the Gateway for both
-            // MES proxied hubs and the Gateway's own platform health hub.
+            // MES/WCS proxied hubs and the Gateway's own platform health hub.
             OnMessageReceived = context =>
             {
                 var accessToken = context.Request.Query["access_token"];
@@ -114,6 +114,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 if (!string.IsNullOrWhiteSpace(accessToken)
                     && (path.StartsWithSegments("/message")
                         || path.StartsWithSegments("/plcHub")
+                        || path.StartsWithSegments("/wcs-hub")
                         || path.StartsWithSegments("/platform/hubs/health")))
                 {
                     context.Token = accessToken;
@@ -156,8 +157,11 @@ app.Use(async (context, next) =>
 {
     var path = context.Request.Path;
     var isMesRealtime = path.StartsWithSegments("/message") || path.StartsWithSegments("/plcHub");
-    if (centralizedCutover
-        && isMesRealtime
+    var isWcsRealtime = path.StartsWithSegments("/wcs-hub");
+    // WCS Desktop is an IAM-only client even while the rest of the Gateway remains in
+    // Migration mode, so its already-validated query token is always promoted. MES keeps
+    // the stricter cutover guard because it may still carry a legacy backend token.
+    if ((isWcsRealtime || (centralizedCutover && isMesRealtime))
         && context.User.Identity?.IsAuthenticated == true
         && string.IsNullOrWhiteSpace(context.Request.Headers.Authorization))
     {
