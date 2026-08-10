@@ -3,9 +3,11 @@ using Aneiang.Yarp.Dashboard.Infrastructure;
 using Aneiang.Yarp.Dashboard.Infrastructure.Auth;
 using Aneiang.Yarp.Dashboard.Infrastructure.I18n;
 using Aneiang.Yarp.Dashboard.Modules.Dashboard.Services;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using System.Security.Claims;
 
 namespace Aneiang.Yarp.Dashboard.Modules.Dashboard.Controllers;
 
@@ -66,7 +68,7 @@ public class DashboardAuthController : Controller
 
     /// <summary>Login POST — validate credentials and return JWT.</summary>
     [HttpPost("login")]
-    public IActionResult Login([FromBody] LoginRequest request)
+    public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         if (request == null || string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
             return Json(new { code = 400, message = "Username and password are required" });
@@ -105,6 +107,32 @@ public class DashboardAuthController : Controller
             SameSite = SameSiteMode.Lax,
             Expires = DateTime.Now.AddHours(8)
         });
+
+        // Also establish the Gateway dashboard session so the host's AuthorizeRequest
+        // (which trusts the "GatewayDashboard" cookie established by /platform/security/login)
+        // lets this login reach /platform/ pages. Without it the dashboard_token cookie is
+        // ignored and the browser is redirected back to the login page.
+        try
+        {
+            var identity = new ClaimsIdentity("GatewayDashboard", ClaimTypes.Name, ClaimTypes.Role);
+            identity.AddClaim(new Claim(ClaimTypes.Name, request.Username));
+            identity.AddClaim(new Claim("identity_source", "Platform"));
+            identity.AddClaim(new Claim("gateway_dashboard", "true"));
+            await HttpContext.SignInAsync(
+                "GatewayDashboard",
+                new ClaimsPrincipal(identity),
+                new AuthenticationProperties
+                {
+                    IsPersistent = false,
+                    AllowRefresh = false,
+                    ExpiresUtc = DateTimeOffset.UtcNow.AddHours(1)
+                });
+        }
+        catch
+        {
+            // The Gateway dashboard cookie scheme may be absent in standalone hosting;
+            // the dashboard_token cookie remains the fallback for that scenario.
+        }
 
         return Json(new { code = 200, token });
     }

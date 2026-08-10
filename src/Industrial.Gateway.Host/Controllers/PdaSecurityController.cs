@@ -8,6 +8,8 @@ namespace Industrial.Gateway.Host.Controllers;
 /// Browser bootstrap for the Android/iOS PDA Authorization Code + PKCE flow.
 /// The verifier never leaves the PDA; this page receives only the PKCE challenge and state.
 /// IAM credentials are posted directly to the Gateway's /account/login reverse-proxy route.
+/// Every authorization starts with an explicit credential check. An existing IAM browser
+/// cookie is cleared before login so a shared PDA cannot silently inherit another operator.
 /// </summary>
 [ApiController]
 [Route("pda-auth")]
@@ -22,6 +24,9 @@ public sealed class PdaSecurityController : ControllerBase
     {
         if (!IsBase64Url(state, 24, 160) || !IsBase64Url(codeChallenge, 32, 160))
             return BadRequest(new { error = "Invalid PDA PKCE state or code challenge." });
+
+        Response.Headers.CacheControl = "no-store, no-cache, max-age=0";
+        Response.Headers.Pragma = "no-cache";
 
         var authorizeUrl = "/connect/authorize"
             + "?client_id=" + Uri.EscapeDataString(ClientId)
@@ -48,16 +53,14 @@ public sealed class PdaSecurityController : ControllerBase
     .card{width:min(420px,100%);padding:28px;border-radius:18px;background:#fff;box-shadow:0 18px 50px rgba(15,23,42,.12)}
     .eyebrow{font-size:12px;font-weight:700;letter-spacing:.12em;color:#2563eb;text-transform:uppercase}h1{margin:10px 0 8px;font-size:24px}.hint{margin:0 0 22px;color:#64748b;font-size:14px;line-height:1.7}
     label{display:block;margin:14px 0 7px;font-size:13px;font-weight:600}input{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:10px;font-size:16px;outline:none}input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
-    button,.continue{display:block;width:100%;margin-top:16px;padding:12px;border:0;border-radius:10px;text-align:center;text-decoration:none;font-weight:700;cursor:pointer}.continue{background:#eff6ff;color:#1d4ed8}button{background:#2563eb;color:#fff}.divider{text-align:center;color:#94a3b8;font-size:12px;margin-top:16px}.error{min-height:22px;margin-top:12px;color:#dc2626;font-size:13px}
+    button{display:block;width:100%;margin-top:16px;padding:12px;border:0;border-radius:10px;text-align:center;font-weight:700;cursor:pointer;background:#2563eb;color:#fff}.error{min-height:22px;margin-top:12px;color:#dc2626;font-size:13px}
   </style>
 </head>
 <body>
   <main class="card">
     <div class="eyebrow">Industrial IAM</div>
     <h1>PDA 统一身份登录</h1>
-    <p class="hint">使用平台 IAM 账号认证。PKCE verifier 仅保存在 PDA 本机，不会发送到此页面。</p>
-    <a id="continue" class="continue" href="#">已有 IAM 会话，直接继续</a>
-    <div class="divider">或重新验证账号</div>
+    <p class="hint">共享 PDA 必须由当前操作员重新验证 IAM 账号。PKCE verifier 仅保存在 PDA 本机，不会发送到此页面。</p>
     <form id="loginForm">
       <label for="userName">IAM 账号</label>
       <input id="userName" autocomplete="username" required />
@@ -71,11 +74,14 @@ public sealed class PdaSecurityController : ControllerBase
   </main>
 <script>
 const authorizeUrl={{authorizeJson}};
-document.getElementById('continue').addEventListener('click',(event)=>{event.preventDefault();window.location.replace(authorizeUrl);});
 document.getElementById('loginForm').addEventListener('submit',async(event)=>{
   event.preventDefault();
   const error=document.getElementById('error');error.textContent='';
   try{
+    // Clear a previous operator's IAM cookie before validating the credentials
+    // entered for this PDA session. Logout failure is non-fatal because a
+    // successful login below replaces the cookie with the current identity.
+    try{await fetch('/account/logout',{method:'POST',credentials:'include'});}catch(e){}
     const response=await fetch('/account/login',{
       method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
