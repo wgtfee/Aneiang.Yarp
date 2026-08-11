@@ -28,6 +28,9 @@ public sealed class PlatformSecurityController : Controller
     [HttpGet]
     public IActionResult Index() => View("~/Views/Platform/Security.cshtml");
 
+    [HttpGet("sso")]
+    public IActionResult Sso() => View("~/Views/Platform/SsoLogin.cshtml");
+
     [HttpGet("callback")]
     public IActionResult Callback() => View("~/Views/Platform/Security.cshtml");
 
